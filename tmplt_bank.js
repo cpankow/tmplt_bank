@@ -111,7 +111,6 @@ function construct_subheader(data, shead_obj) {
  */
 function load_data(type, mass1, mass2) {
 
-    console.log(mass1 + " " + mass2);
 	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
 		, width = 960 - margin.left - margin.right
@@ -170,7 +169,7 @@ function load_data(type, mass1, mass2) {
 	// Frequency scaling
 	var y = d3.scale.linear()
 		//.domain([0, d3.max(data, function(d) { return d.frequency; })])
-		.domain([ 0.85, 3.1 ])
+		.domain([ 0.85, 2.1 ])
 		//.domain([ 0.9, 1.2 ])
 		.range([ height, 0 ]);
 
@@ -186,7 +185,8 @@ function load_data(type, mass1, mass2) {
 
 	main.append('g')
 		.attr('transform', 'translate(0,' + height + ')')
-		.attr('class', 'main axis date')
+        // FIXME: This used to be "main axis date" and it's screwed up other things
+		.attr('class', 'main_axis_x')
 		.call(xAxis);
 
 	// x-axis label
@@ -204,7 +204,7 @@ function load_data(type, mass1, mass2) {
 
 	main.append('g')
 		.attr('transform', 'translate(0,0)')
-		.attr('class', 'main axis date')
+		.attr('class', 'main_axis_y')
 		.call(yAxis);
 
 	// x-axis label
@@ -217,6 +217,29 @@ function load_data(type, mass1, mass2) {
 		.attr("x", 10)
 		.attr("y", height/2)
 		.text("mass2 (solar masses)");
+
+    // Do things like zooming and such
+    var zoom = d3.behavior.zoom()
+        .x(x)
+        .y(y)
+        .scaleExtent([0.5, 100])
+        .on("zoom", zoomed);
+
+    function zoomed() {
+        chart.select(".main_axis_x").call(xAxis);
+        chart.select(".main_axis_y").call(yAxis);
+        chart.selectAll("circle")
+            .attr("cx", function(d) {
+                return x(d[0]);
+            })
+            .attr("cy", function(d) {
+                return y(d[1]);
+            })
+            /* .attr("transform", function(d) {
+                return "translate(" + d[0] + "," + d[1] + ")";
+            }); */
+    }
+    main.call(zoom);
 
 	// draw color axis
 	var cAxis = Colorbar()
