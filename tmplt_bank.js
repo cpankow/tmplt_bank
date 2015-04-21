@@ -2,12 +2,6 @@
 
 /* Configuration object */
 CONFIG = {
-	// Base of the URL for the wscan object request
-	"wscan_base_url" : "https://ligodv.areeda.com/ldvw/",
-	// How opaque reference channel dots are when user is hovering
-	"active_opacity" : 0.1,
-	// How opaque reference channel dots are when user is not hovering
-	"inactive_opacity" : 0.9,
 	// SNR colors: need a color for each value in snr_range
 	"snr_colors": ["blue", "red"]
 };
