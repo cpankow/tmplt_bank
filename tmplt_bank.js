@@ -102,11 +102,11 @@ function construct_cis_link(channel) {
  * information about the results of the round
  * FIXME: Make more verbose
  */
-function construct_subheader(data, shead_obj) {
+function construct_subheader(name, shead_obj) {
 	shead_obj.append("div")
 		.attr("class", "round_name")
 		.style("font-size", "36pt")
-		.html("Type " + data["type"]);
+		.html("Type " + name);
 }
 
 /*
@@ -114,7 +114,10 @@ function construct_subheader(data, shead_obj) {
  * set up the auto wscan sidebar
  * FIXME: Static style should be moved to a CSS file
  */
-function load_data(type, mass1, mass2) {
+function load_data(type, name) {
+    
+    mass1 = type["mass1"]
+    mass2 = type["mass2"]
 
 	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
@@ -133,8 +136,8 @@ function load_data(type, mass1, mass2) {
 		.style("border-top-width", "2px")
 		.style("border-top-style", "solid");
 	// Add an anchor point for links from the top table
-	sub_header.html("<a name='type_" + type['type'] + "'></a>")
-	construct_subheader(type, sub_header);
+	sub_header.html("<a name='type_" + name + "'></a>")
+	construct_subheader(name, sub_header);
 
 	// This is the left sidebar where event information and wscans appear
 	var sidebar = container.append("div")
@@ -163,7 +166,7 @@ function load_data(type, mass1, mass2) {
 		.attr('width', width)
 		.attr('height', height)
 		.attr('float', 'left')
-		.attr('class', 'main');
+		.attr('class', 'canvas');
 
 	// GPS Time scaling
 	var x = d3.scale.linear()
@@ -179,8 +182,8 @@ function load_data(type, mass1, mass2) {
 		.range([ height, 0 ]);
 
 	// SNR colorbar scaling
-	var c = d3.scale.log()
-		.domain([1e-2, 1])
+	var c = d3.scale.linear()
+		.domain([0, 1])
 		.range(CONFIG.snr_colors);
 
 	// draw the x axis
@@ -190,8 +193,7 @@ function load_data(type, mass1, mass2) {
 
 	main.append('g')
 		.attr('transform', 'translate(0,' + height + ')')
-        // FIXME: This used to be "main axis date" and it's screwed up other things
-		.attr('class', 'main_axis_x')
+		.attr('class', 'main axis date xaxis')
 		.call(xAxis);
 
 	// x-axis label
@@ -209,7 +211,7 @@ function load_data(type, mass1, mass2) {
 
 	main.append('g')
 		.attr('transform', 'translate(0,0)')
-		.attr('class', 'main_axis_y')
+		.attr('class', 'main axis date yaxis')
 		.call(yAxis);
 
 	// x-axis label
@@ -231,8 +233,8 @@ function load_data(type, mass1, mass2) {
         .on("zoom", zoomed);
 
     function zoomed() {
-        chart.select(".main_axis_x").call(xAxis);
-        chart.select(".main_axis_y").call(yAxis);
+        chart.select(".xaxis").call(xAxis);
+        chart.select(".yaxis").call(yAxis);
         chart.selectAll("circle")
             .attr("cx", function(d) {
                 return x(d[0]);
@@ -241,16 +243,17 @@ function load_data(type, mass1, mass2) {
                 return y(d[1]);
             })
     }
-    main.call(zoom);
+    chart.call(zoom);
 
 	// draw color axis
 	var cAxis = Colorbar()
 		.scale(c)
 		.origin([0, 0])
-		.thickness(20)
+		.thickness(10)
 		.barlength(400)
 		.title("overlap")
 		.orient("vertical");
+    cAxis.margin.bottom = 400;
 
 	// colorbar label
 	cbart = container.append("svg")
@@ -267,9 +270,10 @@ function load_data(type, mass1, mass2) {
 		.attr("y", 50)
 		.text("overlap");
 
+    // FIXME: No, seriously... wut?
+    // This probably means the bank *has* ot be loaded first --- is there a way
+    // to synchronize this?
     d3.json("bank.json", function(error, full_bank) {
-        console.log(full_bank[0]);
-
         d3.json(type["filename"], function(error, data) {
             // Draw some dots!
             mass1 = data["mass1"];
@@ -295,20 +299,23 @@ header = d3.select("body").append("div")
 d3.json("tmplt_bank.json", function(data) {
 	// Create an entry for this round in the header
 	header.selectAll("p")
-		.data(d3.keys(data["types"]))
+		.data(Object.keys(data["types"]))
 		.enter().append("p")
 			//.html(function(d) {
 			.html(function(k) {
-				return "<a href='#type_" + k + "'>Type " + k;
+				return "<a href='#type_" + k + "'>Type " + k + "</a>";
 			});
 
 	// Loop through the rounds and create a scatter plot section for each
     var i = 0;
-	//for (var i = 0; i < data["types"]["TaylorF2_TaylorF2"].length; i++) {
-		type = data["types"]["TaylorF2_TaylorF2"][i];
-        console.log(type)
-        //console.log(type)
-		load_data(type, type["mass1"], type["mass2"]);
-	//}
+    types = Object.keys(data["types"]);
+    console.log("Loaded these types: " + types);
+    // Dear javascript... learn how to iterate through a dict properly like
+    // python. This code is unnecessarily complicated, and you should feel bad
+	for (var i = 0; i < types.length; i++) {
+		var type = types[i]
+        // FIXME: We get the first one, arbitrarily.
+		load_data(data["types"][type][0], type);
+	}
 
 });
