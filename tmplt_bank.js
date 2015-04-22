@@ -189,7 +189,8 @@ function load_data(type, name) {
 	// draw the x axis
 	var xAxis = d3.svg.axis()
 		.scale(x)
-		.orient('bottom');
+		.orient('bottom')
+		.tickSize(-height);
 
 	main.append('g')
 		.attr('transform', 'translate(0,' + height + ')')
@@ -207,7 +208,8 @@ function load_data(type, name) {
 	// draw the y axis
 	var yAxis = d3.svg.axis()
 		.scale(y)
-		.orient('left');
+		.orient('left')
+		.tickSize(-width);
 
 	main.append('g')
 		.attr('transform', 'translate(0,0)')
