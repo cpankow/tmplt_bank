@@ -37,7 +37,11 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
 	var g = main.append("svg:g")
 			.attr("class", "scatter-dots");
 
-    data.sort(d3.ascending(function(d){ return d[3]; }))
+    // Map the overlap data by index
+    var data_map = {};
+    for (i = 0; i < data.length; i++) {
+        data_map[data[i][3]] = [data[i][0], data[i][1], data[i][2]];
+    }
 
     // FIXME: Split into calculated and uncalculated dots
 	dots = g.selectAll("scatter-dots")
@@ -46,15 +50,14 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
 		.attr("cx", function (d) { return x(d[0]); } )
 		.attr("cy", function (d) { return y(d[1]); } )
 		.attr("r", 3)
-        // FIXME: assumes the full bank and data are ordered the same way
         .attr("fill", function(d, i) { 
-            if (data[i]) {
-                return c(data[i][2]); 
+            if (data_map[i]) {
+                return c(data_map[i][2]); 
             }
         })
         // Ensure the uncalculated points are below the colored ones
         .attr("zorder", function(d, i) {
-            if (data[i]) {
+            if (data_map[i]) {
                 return 1;
             } else {
                 return 0;
@@ -66,6 +69,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
         .duration(200)
         .style("opacity", 1.0);
 
+        console.log("Loading " + "TaylorF2_TaylorF2/TaylorF2_TaylorF2_" + i + ".json");
         // Load new overlaps
         // FIXME: Should update instead
         d3.json("TaylorF2_TaylorF2/TaylorF2_TaylorF2_" + i + ".json", function(error, data) {
@@ -73,11 +77,12 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
                 sidebar.html(error.responseText);
                 return;
             }
+            console.log("...loaded.");
             dots.remove();
             // Draw some dots!
             data = data["overlap"];
             scatter_plot(data, main, x, y, c, sidebar, full_bank);
-            sidebar.html("index " + d[3])
+            sidebar.html("index " + i)
         });
     });
 }
@@ -235,9 +240,6 @@ function load_data(type, mass1, mass2) {
             .attr("cy", function(d) {
                 return y(d[1]);
             })
-            /* .attr("transform", function(d) {
-                return "translate(" + d[0] + "," + d[1] + ")";
-            }); */
     }
     main.call(zoom);
 
