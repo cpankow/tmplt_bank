@@ -247,25 +247,25 @@ function load_data(type, mass1, mass2) {
 	var cAxis = Colorbar()
 		.scale(c)
 		.origin([0, 0])
-		.thickness(10)
+		.thickness(20)
 		.barlength(400)
 		.title("overlap")
 		.orient("vertical");
 
 	// colorbar label
 	cbart = container.append("svg")
-			.style("float", "left")
-			.style("height", height + margin.bottom)
+        .style("float", "left")
+        .style("height", height + margin.bottom)
 	cbart.append('g')
-			.attr('transform', 'translate(50,20)')
-			.call(cAxis);
+        .attr('transform', 'translate(50,20)')
+        .call(cAxis);
 	cbart.append('g').append("text")
 		.attr("class", "c_label")
 		.attr("text-anchor", "end")
 		.attr("transform", "rotate(90," + 10 + "," + 50  + ")")
-		.attr("x", 10)
+		.attr("x", 25)
 		.attr("y", 50)
-		.text("SNR");
+		.text("overlap");
 
     d3.json("bank.json", function(error, full_bank) {
         console.log(full_bank[0]);
