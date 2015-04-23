@@ -82,7 +82,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             // Draw some dots!
             data = data["overlap"];
             scatter_plot(data, main, x, y, c, sidebar, full_bank);
-            sidebar.html("index " + i)
+            sidebar.html("mass1: " + d[0] + "<br>mass2: " + d[1] + "<br> index " + i);
         });
     });
 }
