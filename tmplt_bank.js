@@ -64,6 +64,31 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             }
         });
 
+    var ttip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+    // Give a tooltip with some basic info if hovered over
+    dots.on("mouseover", function(d, i) {
+        overlap_val = 'N/A'
+        if (data_map[i]) {
+            overlap_val = data_map[i][2]; 
+        }
+        ttip.transition()
+            .duration(200) 
+            .style("opacity", 0.9);      
+        ttip.html("(" + d[0] + ", " + d[1] + ")" + "<br/>overlap: " + overlap_val)  
+            .style("left", (d3.event.pageX) + "px")     
+            .style("top", (d3.event.pageY - 28) + "px");
+    });
+
+    // And make it go away
+    dots.on("mouseout", function(d, i) {
+        ttip.transition()
+            .duration(500)
+            .style("opacity", 0);
+    });
+
     dots.on("mouseup", function(d, i) {
         sidebar.transition()
         .duration(200)
@@ -146,7 +171,7 @@ function load_data(type, name) {
 		.style("left", 0)
 		.style("width", "300px")
 		.style("padding", "10px")
-        .html("Click on any point to load overlap with template bank.");
+        .html("Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
 	 
 	// FIXME: Move this to config?
 	var sidebar_size = 300;
