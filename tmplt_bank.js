@@ -117,7 +117,7 @@ function construct_subheader(name, shead_obj) {
  * set up the auto wscan sidebar
  * FIXME: Static style should be moved to a CSS file
  */
-function load_data(type, name) {
+function load_data(type, name, full_bank) {
     
     mass1 = type["mass1"]
     mass2 = type["mass2"]
@@ -163,6 +163,13 @@ function load_data(type, name) {
 			.attr('height', height + margin.top + margin.bottom)
 			.attr('class', 'chart');
 
+    // Main scales
+    min_mass1 = 0.9 * d3.min(full_bank, function(d){ return d[0]; });
+    max_mass1 = 1.1 * d3.max(full_bank, function(d){ return d[0]; });
+    min_mass2 = 0.9 * d3.min(full_bank, function(d){ return d[1]; });
+    max_mass2 = 1.1 * d3.max(full_bank, function(d){ return d[1]; });
+    console.log("Loaded template bank with min/max mass1: " + min_mass1 + " " + max_mass1 + " and min/max mass2: " + min_mass2 + " " + max_mass2);
+
 	// This is the main plot canvas
 	var main = chart.append('g')
 		.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
@@ -171,17 +178,14 @@ function load_data(type, name) {
 		.attr('float', 'left')
 		.attr('class', 'canvas');
 
-	// GPS Time scaling
+	// mass1 scaling
 	var x = d3.scale.linear()
-		.domain([ 0.9, 3.1 ])
-		//.domain([ 2.6, 3.1 ])
+        .domain([ min_mass1, max_mass1 ])
 		.range([ 0, width ]);
 
-	// Frequency scaling
+	// mass2 scaling
 	var y = d3.scale.linear()
-		//.domain([0, d3.max(data, function(d) { return d.frequency; })])
-		.domain([ 0.85, 2.1 ])
-		//.domain([ 0.9, 1.2 ])
+        .domain([ min_mass2, max_mass2 ])
 		.range([ height, 0 ]);
 
 	// SNR colorbar scaling
@@ -234,7 +238,7 @@ function load_data(type, name) {
     var zoom = d3.behavior.zoom()
         .x(x)
         .y(y)
-        .scaleExtent([0.5, 100])
+        .scaleExtent([0.5, 500])
         .on("zoom", zoomed);
 
     function zoomed() {
@@ -275,17 +279,12 @@ function load_data(type, name) {
 		.attr("y", 50)
 		.text("overlap");
 
-    // FIXME: No, seriously... wut?
-    // This probably means the bank *has* ot be loaded first --- is there a way
-    // to synchronize this?
-    d3.json("bank.json", function(error, full_bank) {
-        d3.json(type["filename"], function(error, data) {
-            // Draw some dots!
-            mass1 = data["mass1"];
-            mass2 = data["mass2"];
-            data = data["overlap"];
-            scatter_plot(data, main, x, y, c, sidebar, full_bank);
-        });
+    d3.json(type["filename"], function(error, data) {
+        // Draw some dots!
+        mass1 = data["mass1"];
+        mass2 = data["mass2"];
+        data = data["overlap"];
+        scatter_plot(data, main, x, y, c, sidebar, full_bank);
     });
 }
 
@@ -296,29 +295,34 @@ header = d3.select("body").append("div")
 	.style("width", "100%")
 	.style("clear", "left")
 
-/*
- * tmplt_bank.json is where the type information is expected to be stored --
- * without it, none of this works. The overlap file information is inferred by
- * the information stored in this file, so it must be accurate and complete
- */
-d3.json("tmplt_bank.json", function(data) {
-	// Create an entry for this round in the header
-	header.selectAll("p")
-		.data(Object.keys(data["types"]))
-		.enter().append("p")
-        .html(function(k) {
-            return "<a href='#type_" + k + "'>Type " + k + "</a>";
-        });
+// FIXME: No, seriously... wut?
+// This probably means the bank *has* ot be loaded first --- is there a way
+// to synchronize this?
+d3.json("bank.json", function(error, full_bank) {
+    /*
+     * tmplt_bank.json is where the type information is expected to be stored --
+     * without it, none of this works. The overlap file information is inferred by
+     * the information stored in this file, so it must be accurate and complete
+     */
+    d3.json("tmplt_bank.json", function(data) {
+        // Create an entry for this round in the header
+        header.selectAll("p")
+            .data(Object.keys(data["types"]))
+            .enter().append("p")
+            .html(function(k) {
+                return "<a href='#type_" + k + "'>Type " + k + "</a>";
+            });
 
-	// Loop through the rounds and create a scatter plot section for each
-    types = Object.keys(data["types"]);
-    console.log("Loaded these types: " + types);
-    // Dear javascript... learn how to iterate through a dict properly like
-    // python. This code is unnecessarily complicated, and you should feel bad
-	for (var i = 0; i < types.length; i++) {
-		var type = types[i]
-        // FIXME: We get the first one, arbitrarily.
-		load_data(data["types"][type][0], type);
-	}
+        // Loop through the rounds and create a scatter plot section for each
+        types = Object.keys(data["types"]);
+        console.log("Loaded these types: " + types);
+        // Dear javascript... learn how to iterate through a dict properly like
+        // python. This code is unnecessarily complicated, and you should feel bad
+        for (var i = 0; i < types.length; i++) {
+            var type = types[i]
+            // FIXME: We get the first one, arbitrarily.
+            load_data(data["types"][type][0], type, full_bank);
+        }
 
+    });
 });
