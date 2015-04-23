@@ -142,11 +142,11 @@ function load_data(type, name) {
 	// This is the left sidebar where event information and wscans appear
 	var sidebar = container.append("div")
 		.attr("class", "sidebar")
-		.style("opacity", 0)
 		.style("position", "absolute")
 		.style("left", 0)
 		.style("width", "300px")
-		.style("padding", "10px");
+		.style("padding", "10px")
+        .html("Click on any point to load overlap with template bank.");
 	 
 	// FIXME: Move this to config?
 	var sidebar_size = 300;
