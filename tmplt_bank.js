@@ -8,29 +8,13 @@ CONFIG = {
 console.log(CONFIG);
 
 /*
- * Construct the sidebar markup for a given round with winnning channel win_chan
- * reference channel ref_chan and the data point (winner) d.
- * FIXME: This is going away likely because it depends on hardcoded wscan
- * locations
- */
-function inner_box(d, win_chan, ref_chan) {
-	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
-	ref_src = build_srclink(d, ref_chan);
-	targ_src = build_srclink(d, win_chan);
-	htmlstr += "<br/><b>" + ref_chan + ":</b> <br/> <a href='" + ref_src + "' target='_blank'><img src='" + ref_src + "' width='200px' height='120px' /></a> <br/>";
-	htmlstr += "<br/><b>" + win_chan + ":</b> <br/> <a href='" + targ_src + "' target='_blank'><img src='" + targ_src + "' width='200px' height='120px' /></a> <br/>";
-	return htmlstr;
-}
-
-/*
  * Construct an SVG scatter plot given:
- * data: data array with each element having time/frequency/SNR information
- * x: D3js time scale
- * y: D3js frequency scale
- * c: D3js SNR scale (colorscale)
- * sidebar:reference to sidebar object -- needed for mouse event binding
- * type: 'reference' or 'winner': controls how the sidebar reacts to a given
- * eventt
+ * data: data array with each element having mass1/mass2/overlap information
+ * x: D3js mass1 scale
+ * y: D3js mass2 scale
+ * c: D3js overlap scale (colorscale)
+ * sidebar: reference to sidebar object -- needed for mouse event binding
+ * full_bank: array of m1, m2 pairs arranged by index in the template bank
  */
 function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
 
@@ -44,6 +28,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
     }
 
     // FIXME: Split into calculated and uncalculated dots
+    // This is so the 'uncalculated' dots don't overlay on top
 	dots = g.selectAll("scatter-dots")
 		.data(full_bank)
 		.enter().append("svg:circle")
@@ -64,6 +49,8 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             }
         });
 
+    // Create the hovering tooltip
+    // FIXME: Move this to each type construction and select on it
     var ttip = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
@@ -89,6 +76,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             .style("opacity", 0);
     });
 
+    // Load a new overlap mapping if a user clicks on a point
     dots.on("mouseup", function(d, i) {
         sidebar.transition()
         .duration(200)
@@ -113,23 +101,13 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
 }
 
 /*
- * Retrieve a link to the channel description page on CIS.
- * FIXME: Need to figure out how to link by channel name
- * OR get the JSON for that request and parse it manually (ugh)
- */
-function construct_cis_link(channel) {
-	//return "https://cis.ligo.org/channel/"
-	return channel;
-}
-
-/*
  * Construct the round specific sub header with round indication and some
  * information about the results of the round
  * FIXME: Make more verbose
  */
 function construct_subheader(name, shead_obj) {
 	shead_obj.append("div")
-		.attr("class", "round_name")
+		.attr("class", "type_name")
 		.style("font-size", "36pt")
 		.html("Type " + name);
 }
@@ -319,22 +297,20 @@ header = d3.select("body").append("div")
 	.style("clear", "left")
 
 /*
- * hveto.json is where the round infomration is expected to be stored -- without
- * it, none of this works. The trigger file information is inferred by the
- * information stored in this file, so it must be accurate and complete
+ * tmplt_bank.json is where the type information is expected to be stored --
+ * without it, none of this works. The overlap file information is inferred by
+ * the information stored in this file, so it must be accurate and complete
  */
 d3.json("tmplt_bank.json", function(data) {
 	// Create an entry for this round in the header
 	header.selectAll("p")
 		.data(Object.keys(data["types"]))
 		.enter().append("p")
-			//.html(function(d) {
-			.html(function(k) {
-				return "<a href='#type_" + k + "'>Type " + k + "</a>";
-			});
+        .html(function(k) {
+            return "<a href='#type_" + k + "'>Type " + k + "</a>";
+        });
 
 	// Loop through the rounds and create a scatter plot section for each
-    var i = 0;
     types = Object.keys(data["types"]);
     console.log("Loaded these types: " + types);
     // Dear javascript... learn how to iterate through a dict properly like
