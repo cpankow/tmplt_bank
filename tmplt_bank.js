@@ -1,4 +1,4 @@
-/* Copyright 2015 Chris Pankow, all rights reserved, except where licenses from other copied code might apply */
+/* Copyright 2015 Chris Pankow, see LICENSE for licensing, except where licenses from other copied code might apply */
 
 /* Configuration object */
 CONFIG = {
