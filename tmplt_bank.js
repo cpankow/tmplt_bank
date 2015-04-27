@@ -49,11 +49,8 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             }
         });
 
-    // Create the hovering tooltip
     // FIXME: Move this to each type construction and select on it
-    var ttip = d3.select("body").append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0);
+    var ttip = d3.select(".tooltip");
 
     // Give a tooltip with some basic info if hovered over
     dots.on("mouseover", function(d, i) {
@@ -121,6 +118,11 @@ function load_data(type, name, full_bank) {
     
     mass1 = type["mass1"]
     mass2 = type["mass2"]
+
+    // Create the hovering tooltip
+    var ttip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
 
 	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
