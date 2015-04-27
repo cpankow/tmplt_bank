@@ -82,6 +82,30 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             }
         });
 
+    // FIXME: This won't work if there are multiple scatter plots on a page.
+    var idx_select = d3.select(".idx_selector");
+    idx_select.on("change", function() {
+        idx = this.selectedIndex;
+        console.log("Getting data for index " + idx);
+        //console.log("Loading " + full_bank[idx][d.length-1]);
+        new_dat = full_bank[idx]
+
+        // Load new overlaps
+        // FIXME: Should update instead
+        d3.json(new_dat[new_dat.length-1], function(error, data) {
+            if (error) {
+                sidebar.select(".info").html(error.responseText);
+                return;
+            }
+            console.log("...loaded.");
+            dots.remove();
+            // Draw some dots!
+            data = data["overlap"];
+            scatter_plot(data, main, x, y, c, sidebar, full_bank);
+            sidebar.select(".info").html("mass1: " + new_dat[0] + "<br>mass2: " + new_dat[1] + "<br> index " + idx);
+        });
+    });
+
     // FIXME: Move this to each type construction and select on it
     var ttip = d3.select(".tooltip");
 
@@ -94,7 +118,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
         ttip.transition()
             .duration(200) 
             .style("opacity", 0.9);      
-        ttip.html("(" + d[0] + ", " + d[1] + ")" + "<br/>overlap: " + overlap_val)  
+        ttip.html("masses: (" + d[0] + ", " + d[1] + ")" + "<br/>overlap: " + overlap_val)  
             .style("left", (d3.event.pageX) + "px")     
             .style("top", (d3.event.pageY - 28) + "px");
     });
@@ -389,6 +413,15 @@ d3.json("bank.json", function(error, full_bank) {
                     .attr('width', width + margin.right + margin.left)
                     .attr('height', height + margin.top + margin.bottom)
                     .attr('class', 'chart');
+
+            // Index selector
+            var idx_select = sidebar.append("select")
+                .attr("class", "idx_selector");
+            idx_select.selectAll("option").data(full_bank)
+                .enter().append("option")
+                .text(function(d, i) {
+                    return "(" + i + ")" + " " + d.slice(0, -1);
+                });
 
             // Coordinate selector
             coord_systems = ["mass1_mass2", "mchirp_eta", "spin1z_spin2z", "mass1_spin1z", "mass2_spin2z"];
