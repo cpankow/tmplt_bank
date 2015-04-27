@@ -7,6 +7,38 @@ CONFIG = {
 };
 console.log(CONFIG);
 
+IDX_MAP = {
+    "mass1": 0,
+    "mass2": 1,
+    "spin1z": 2,
+    "spin2z": 3,
+    "mchirp": 0,
+    "eta": 1
+    // TODO: Implement these
+    //"tau0": 0,
+    //"tau1": 1
+};
+
+function mc_eta(data) {
+    for (i = 0; i < data.length; i++) {
+        m1 = data[i][IDX_MAP["mass1"]];
+        m2 = data[i][IDX_MAP["mass2"]];
+        data[i][IDX_MAP["mass1"]] = Math.pow(m1*m2, 3./5.) * Math.pow(m1+m2, -1./5.);
+        data[i][IDX_MAP["mass2"]] = m1*m2/(m1+m2)/(m1+m2);
+    }
+    return data;
+}
+
+function m1m2(data) {
+    for (i = 0; i < data.length; i++) {
+        mc = data[i][IDX_MAP["mass1"]];
+        eta = data[i][IDX_MAP["mass2"]];
+        data[i][IDX_MAP["mass1"]] = 0.5*mc*Math.pow(eta, -3./5.)*(1. + Math.sqrt(1 - 4.*eta));
+        data[i][IDX_MAP["mass2"]] = 0.5*mc*Math.pow(eta, -3./5.)*(1. - Math.sqrt(1 - 4.*eta));
+    }
+    return data;
+}
+
 /*
  * Construct an SVG scatter plot given:
  * data: data array with each element having mass1/mass2/overlap information
@@ -92,7 +124,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             // Draw some dots!
             data = data["overlap"];
             scatter_plot(data, main, x, y, c, sidebar, full_bank);
-            sidebar.html("mass1: " + d[0] + "<br>mass2: " + d[1] + "<br> index " + i);
+            sidebar.select(".info").html("mass1: " + d[0] + "<br>mass2: " + d[1] + "<br> index " + i);
         });
     });
 }
@@ -114,53 +146,12 @@ function construct_subheader(name, shead_obj) {
  * set up the auto wscan sidebar
  * FIXME: Static style should be moved to a CSS file
  */
-function load_data(type, name, full_bank) {
-    
-    // Create the hovering tooltip
-    var ttip = d3.select("body").append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0);
+function load_data(type, container, full_bank) {
 
 	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
 		, width = 960 - margin.left - margin.right
 		, height = 500 - margin.top - margin.bottom;
-			
-	// Scatter and left sidebar container
-	var container = d3.select("body").append("div")
-		.attr("class", "container")
-		.style("float", "left");
-
-	var sub_header = container.append("div")
-		.attr("class", "sub_header")
-		.style("width", "100%")
-		.style("text-align", "right")
-		.style("border-top-width", "2px")
-		.style("border-top-style", "solid");
-	// Add an anchor point for links from the top table
-	sub_header.html("<a name='type_" + name + "'></a>")
-	construct_subheader(name, sub_header);
-
-	// This is the left sidebar where event information and wscans appear
-	var sidebar = container.append("div")
-		.attr("class", "sidebar")
-		.style("position", "absolute")
-		.style("left", 0)
-		.style("width", "300px")
-		.style("padding", "10px")
-        .html("Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
-	 
-	// FIXME: Move this to config?
-	var sidebar_size = 300;
-	var chart = container.append('div')
-			.attr("class", "scatterplot")
-			.style("padding-left", sidebar_size + "px")
-			.style("float", "left")
-			.style("clear", "both")
-		.append('svg:svg')
-			.attr('width', width + margin.right + margin.left)
-			.attr('height', height + margin.top + margin.bottom)
-			.attr('class', 'chart');
 
     // Main scales
     min_mass1 = 0.9 * d3.min(full_bank, function(d){ return d[0]; });
@@ -170,6 +161,7 @@ function load_data(type, name, full_bank) {
     console.log("Loaded template bank with min/max mass1: " + min_mass1 + " " + max_mass1 + " and min/max mass2: " + min_mass2 + " " + max_mass2);
 
 	// This is the main plot canvas
+    var chart = container.select(".chart");
 	var main = chart.append('g')
 		.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
 		.attr('width', width)
@@ -263,14 +255,15 @@ function load_data(type, name, full_bank) {
 		.orient("vertical");
     cAxis.margin.bottom = 400;
 
-	// colorbar label
-	cbart = container.append("svg")
+	cbarsvg = container.append("svg")
+        .attr("class", "colorbar")
         .style("float", "left")
         .style("height", height + margin.bottom)
-	cbart.append('g')
+	cbarsvg.append('g')
         .attr('transform', 'translate(50,20)')
         .call(cAxis);
-	cbart.append('g').append("text")
+	// colorbar label
+	cbarsvg.append('g').append("text")
 		.attr("class", "c_label")
 		.attr("text-anchor", "end")
 		.attr("transform", "rotate(90," + 10 + "," + 50  + ")")
@@ -278,6 +271,7 @@ function load_data(type, name, full_bank) {
 		.attr("y", 50)
 		.text("overlap");
 
+    var sidebar = container.select(".sidebar");
     d3.json(type["filename"], function(error, data) {
         // Draw some dots!
         mass1 = data["mass1"];
@@ -318,9 +312,91 @@ d3.json("bank.json", function(error, full_bank) {
         // Dear javascript... learn how to iterate through a dict properly like
         // python. This code is unnecessarily complicated, and you should feel bad
         for (var i = 0; i < types.length; i++) {
-            var type = types[i]
+            var type = types[i];
+            var init_data = data["types"][type][0];
+
+            // Create the hovering tooltip
+            var ttip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            // Scatter and left sidebar container
+            var container = d3.select("body").append("div")
+                .attr("class", "container")
+                .style("float", "left");
+
+            var sub_header = container.append("div")
+                .attr("class", "sub_header")
+                .style("width", "100%")
+                .style("text-align", "right")
+                .style("border-top-width", "2px")
+                .style("border-top-style", "solid");
+            // Add an anchor point for links from the top table
+            sub_header.html("<a name='type_" + name + "'></a>")
+            construct_subheader(type, sub_header);
+
+            // This is the left sidebar where event information and wscans appear
+            // FIXME: Move this to config?
+            var sidebar_size = 300;
+            var sidebar = container.append("div")
+                .attr("class", "sidebar")
+                .style("position", "absolute")
+                .style("left", 0)
+                .style("width", sidebar_size + "px")
+                .style("padding", "10px");
+
+            // Add some margins to the plotting area
+            // FIXME: Don't replicate this here and load_data -- make config?
+            var margin = {top: 20, right: 15, bottom: 60, left: 60}
+                , width = 960 - margin.left - margin.right
+                , height = 500 - margin.top - margin.bottom;
+
+            var chart = container.append('div')
+                    .attr("class", "scatterplot")
+                    .style("padding-left", sidebar_size + "px")
+                    .style("float", "left")
+                    .style("clear", "both")
+                .append('svg:svg')
+                    .attr('width', width + margin.right + margin.left)
+                    .attr('height', height + margin.top + margin.bottom)
+                    .attr('class', 'chart');
+
+            // Coordinate selector
+            coord_systems = ["mass1_mass2", "mchirp_eta"];
+            var coord_select = sidebar.append("select");
+            coord_select.on("change", function() {
+                sys = this.options[this.selectedIndex];
+                console.log(sys.value);
+                
+                // Transform data
+                // WARNING: This is *in place*, don't lose track of your
+                // coordinate system
+                // FIXME: This should update the data via a transformation
+                chart.selectAll("*").remove();
+                container.selectAll(".colorbar").remove();
+                switch (sys.value) {
+                    case "mass1_mass2": 
+                        console.log("Transforming to mass1 / mass2 space");
+                        full_bank = m1m2(full_bank);
+                        break;
+                    case "mchirp_eta": 
+                        console.log("Transforming to mchirp / eta space");
+                        full_bank = mc_eta(full_bank);
+                        break;
+                }
+                load_data(init_data, container, full_bank);
+
+            });
+            coord_select.selectAll("option").data(coord_systems)
+                .enter().append("option")
+                .text(function(d) {
+                    return d;
+                });
+
+            sidebar.append("div").attr("class", "info").html("<br/>Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
+
             // FIXME: We get the first one, arbitrarily.
-            load_data(data["types"][type][0], type, full_bank);
+            load_data(init_data, container, full_bank);
         }
 
     });
