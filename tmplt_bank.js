@@ -31,8 +31,8 @@ function mc_eta(data) {
 
 function m1m2(data) {
     for (i = 0; i < data.length; i++) {
-        mc = data[i][IDX_MAP["mass1"]];
-        eta = data[i][IDX_MAP["mass2"]];
+        mc = data[i][IDX_MAP["mchirp"]];
+        eta = data[i][IDX_MAP["eta"]];
         data[i][IDX_MAP["mass1"]] = 0.5*mc*Math.pow(eta, -3./5.)*(1. + Math.sqrt(1 - 4.*eta));
         data[i][IDX_MAP["mass2"]] = 0.5*mc*Math.pow(eta, -3./5.)*(1. - Math.sqrt(1 - 4.*eta));
     }
