@@ -79,10 +79,10 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
         .duration(200)
         .style("opacity", 1.0);
 
-        console.log("Loading " + "TaylorF2_TaylorF2/TaylorF2_TaylorF2_" + i + ".json");
+        console.log("Loading " + d[2]);
         // Load new overlaps
         // FIXME: Should update instead
-        d3.json("TaylorF2_TaylorF2/TaylorF2_TaylorF2_" + i + ".json", function(error, data) {
+        d3.json(d[2], function(error, data) {
             if (error) {
                 sidebar.html(error.responseText);
                 return;
@@ -116,9 +116,6 @@ function construct_subheader(name, shead_obj) {
  */
 function load_data(type, name, full_bank) {
     
-    mass1 = type["mass1"]
-    mass2 = type["mass2"]
-
     // Create the hovering tooltip
     var ttip = d3.select("body").append("div")
         .attr("class", "tooltip")
