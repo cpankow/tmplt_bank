@@ -57,7 +57,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
     // Map the overlap data by index
     var data_map = {};
     for (i = 0; i < data.length; i++) {
-        data_map[data[i][3]] = [data[i][0], data[i][1], data[i][2]];
+        data_map[data[i][3]] = data[i][2];
     }
 
     // FIXME: Split into calculated and uncalculated dots
@@ -65,12 +65,12 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
 	dots = g.selectAll("scatter-dots")
 		.data(full_bank)
 		.enter().append("svg:circle")
-		.attr("cx", function (d) { return x(d[0]); } )
-		.attr("cy", function (d) { return y(d[1]); } )
+		.attr("cx", function (d) { return x(d); } )
+		.attr("cy", function (d) { return y(d); } )
 		.attr("r", 3)
         .attr("fill", function(d, i) { 
             if (data_map[i]) {
-                return c(data_map[i][2]); 
+                return c(data_map[i]); 
             }
         })
         // Ensure the uncalculated points are below the colored ones
@@ -89,7 +89,7 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
     dots.on("mouseover", function(d, i) {
         overlap_val = 'N/A'
         if (data_map[i]) {
-            overlap_val = data_map[i][2]; 
+            overlap_val = data_map[i]; 
         }
         ttip.transition()
             .duration(200) 
@@ -151,6 +151,8 @@ function load_data(type, container, full_bank, axis1, axis2) {
 
     a1_idx = IDX_MAP[axis1];
     a2_idx = IDX_MAP[axis2];
+    console.log("Mapped " + axis1 + " to data index " + a1_idx);
+    console.log("Mapped " + axis2 + " to data index " + a2_idx);
 
 	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
@@ -163,6 +165,14 @@ function load_data(type, container, full_bank, axis1, axis2) {
     max_mass1 = 1.1 * d3.max(full_bank, function(d){ return d[a1_idx]; });
     min_mass2 = 0.9 * d3.min(full_bank, function(d){ return d[a2_idx]; });
     max_mass2 = 1.1 * d3.max(full_bank, function(d){ return d[a2_idx]; });
+    if (min_mass1 == max_mass1) {
+        min_mass1 = -1;
+        max_mass1 = 1;
+    }
+    if (min_mass2 == max_mass2) {
+        min_mass2 = -1;
+        max_mass2 = 1;
+    }
     console.log("Loaded template bank with min/max axis1: " + min_mass1 + " " + max_mass1 + " and min/max axis2: " + min_mass2 + " " + max_mass2);
 
 	// This is the main plot canvas
@@ -230,6 +240,16 @@ function load_data(type, container, full_bank, axis1, axis2) {
 		.attr("y", height/2)
 		.text(axis2);
 
+    // We encapsulate these here so that the scatter plot constructor doesn't
+    // need additional information about the relative index in the data array
+    var get_x = function (d) {
+        return x(d[a1_idx]);
+    }
+
+    var get_y = function (d) {
+        return y(d[a2_idx]);
+    }
+
     // Do things like zooming and such
     var zoom = d3.behavior.zoom()
         .x(x)
@@ -242,10 +262,10 @@ function load_data(type, container, full_bank, axis1, axis2) {
         chart.select(".yaxis").call(yAxis);
         chart.selectAll("circle")
             .attr("cx", function(d) {
-                return x(d[0]);
+                return get_x(d);
             })
             .attr("cy", function(d) {
-                return y(d[1]);
+                return get_y(d);
             })
     }
     chart.call(zoom);
@@ -282,7 +302,8 @@ function load_data(type, container, full_bank, axis1, axis2) {
         mass1 = data["mass1"];
         mass2 = data["mass2"];
         data = data["overlap"];
-        scatter_plot(data, main, x, y, c, sidebar, full_bank);
+        //scatter_plot(data, main, x, y, c, sidebar, full_bank);
+        scatter_plot(data, main, get_x, get_y, c, sidebar, full_bank);
     });
 }
 
@@ -370,7 +391,7 @@ d3.json("bank.json", function(error, full_bank) {
                     .attr('class', 'chart');
 
             // Coordinate selector
-            coord_systems = ["mass1_mass2", "mchirp_eta"];
+            coord_systems = ["mass1_mass2", "mchirp_eta", "spin1z_spin2z"];
             var coord_select = sidebar.append("select");
             coord_select.on("change", function() {
                 sys = this.options[this.selectedIndex];
@@ -382,6 +403,8 @@ d3.json("bank.json", function(error, full_bank) {
                 // FIXME: This should update the data via a transformation
                 chart.selectAll("*").remove();
                 container.selectAll(".colorbar").remove();
+                axis1 = undefined;
+                axis2 = undefined;
                 switch (sys.value) {
                     case "mass1_mass2": 
                         axis1 = "mass1";
@@ -394,6 +417,11 @@ d3.json("bank.json", function(error, full_bank) {
                         axis2 = "eta";
                         console.log("Transforming to mchirp / eta space");
                         full_bank = mc_eta(full_bank);
+                        break;
+                    case "spin1z_spin2z": 
+                        axis1 = "spin1z";
+                        axis2 = "spin2z";
+                        console.log("Transforming to spin1z / spin2z space");
                         break;
                 }
                 load_data(init_data, container, full_bank, axis1, axis2);
