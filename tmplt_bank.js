@@ -391,7 +391,7 @@ d3.json("bank.json", function(error, full_bank) {
                     .attr('class', 'chart');
 
             // Coordinate selector
-            coord_systems = ["mass1_mass2", "mchirp_eta", "spin1z_spin2z"];
+            coord_systems = ["mass1_mass2", "mchirp_eta", "spin1z_spin2z", "mass1_spin1z", "mass2_spin2z"];
             var coord_select = sidebar.append("select");
             coord_select.on("change", function() {
                 sys = this.options[this.selectedIndex];
@@ -422,6 +422,16 @@ d3.json("bank.json", function(error, full_bank) {
                         axis1 = "spin1z";
                         axis2 = "spin2z";
                         console.log("Transforming to spin1z / spin2z space");
+                        break;
+                    case "mass1_spin1z": 
+                        axis1 = "mass1";
+                        axis2 = "spin1z";
+                        console.log("Transforming to mass1 / spin1z space");
+                        break;
+                    case "mass2_spin2z": 
+                        axis1 = "mass2";
+                        axis2 = "spin2z";
+                        console.log("Transforming to mass2 / spin2z space");
                         break;
                 }
                 load_data(init_data, container, full_bank, axis1, axis2);
