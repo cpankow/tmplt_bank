@@ -42,8 +42,9 @@ function m1m2(data) {
 /*
  * Construct an SVG scatter plot given:
  * data: data array with each element having mass1/mass2/overlap information
- * x: D3js mass1 scale
- * y: D3js mass2 scale
+ * main: main plotting area (SVG)
+ * x: D3js axis1 scale
+ * y: D3js axis2 scale
  * c: D3js overlap scale (colorscale)
  * sidebar: reference to sidebar object -- needed for mouse event binding
  * full_bank: array of m1, m2 pairs arranged by index in the template bank
@@ -111,12 +112,12 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
         .duration(200)
         .style("opacity", 1.0);
 
-        console.log("Loading " + d[2]);
+        console.log("Loading " + d[d.length-1]);
         // Load new overlaps
         // FIXME: Should update instead
-        d3.json(d[2], function(error, data) {
+        d3.json(d[d.length-1], function(error, data) {
             if (error) {
-                sidebar.html(error.responseText);
+                sidebar.select(".info").html(error.responseText);
                 return;
             }
             console.log("...loaded.");
@@ -146,7 +147,10 @@ function construct_subheader(name, shead_obj) {
  * set up the auto wscan sidebar
  * FIXME: Static style should be moved to a CSS file
  */
-function load_data(type, container, full_bank) {
+function load_data(type, container, full_bank, axis1, axis2) {
+
+    a1_idx = IDX_MAP[axis1];
+    a2_idx = IDX_MAP[axis2];
 
 	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
@@ -154,11 +158,12 @@ function load_data(type, container, full_bank) {
 		, height = 500 - margin.top - margin.bottom;
 
     // Main scales
-    min_mass1 = 0.9 * d3.min(full_bank, function(d){ return d[0]; });
-    max_mass1 = 1.1 * d3.max(full_bank, function(d){ return d[0]; });
-    min_mass2 = 0.9 * d3.min(full_bank, function(d){ return d[1]; });
-    max_mass2 = 1.1 * d3.max(full_bank, function(d){ return d[1]; });
-    console.log("Loaded template bank with min/max mass1: " + min_mass1 + " " + max_mass1 + " and min/max mass2: " + min_mass2 + " " + max_mass2);
+    // FIXME: Use .extent?
+    min_mass1 = 0.9 * d3.min(full_bank, function(d){ return d[a1_idx]; });
+    max_mass1 = 1.1 * d3.max(full_bank, function(d){ return d[a1_idx]; });
+    min_mass2 = 0.9 * d3.min(full_bank, function(d){ return d[a2_idx]; });
+    max_mass2 = 1.1 * d3.max(full_bank, function(d){ return d[a2_idx]; });
+    console.log("Loaded template bank with min/max axis1: " + min_mass1 + " " + max_mass1 + " and min/max axis2: " + min_mass2 + " " + max_mass2);
 
 	// This is the main plot canvas
     var chart = container.select(".chart");
@@ -201,7 +206,7 @@ function load_data(type, container, full_bank) {
 		.attr("text-anchor", "end")
 		.attr("x", width/2)
 		.attr("y", height + margin.top + margin.bottom / 2)
-		.text("mass 1 (solar masses)");
+		.text(axis1);
 
 	// draw the y axis
 	var yAxis = d3.svg.axis()
@@ -223,7 +228,7 @@ function load_data(type, container, full_bank) {
 		.attr("transform", "rotate(270," + 10 + "," + height/2  + ")")
 		.attr("x", 10)
 		.attr("y", height/2)
-		.text("mass2 (solar masses)");
+		.text(axis2);
 
     // Do things like zooming and such
     var zoom = d3.behavior.zoom()
@@ -298,6 +303,7 @@ d3.json("bank.json", function(error, full_bank) {
      * the information stored in this file, so it must be accurate and complete
      */
     d3.json("tmplt_bank.json", function(data) {
+        header.append("h2").html("Table of Overlap Calculations");
         // Create an entry for this round in the header
         header.selectAll("p")
             .data(Object.keys(data["types"]))
@@ -305,6 +311,8 @@ d3.json("bank.json", function(error, full_bank) {
             .html(function(k) {
                 return "<a href='#type_" + k + "'>Type " + k + "</a>";
             });
+
+        header.append("p").html("<br/>Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
 
         // Loop through the rounds and create a scatter plot section for each
         types = Object.keys(data["types"]);
@@ -376,15 +384,19 @@ d3.json("bank.json", function(error, full_bank) {
                 container.selectAll(".colorbar").remove();
                 switch (sys.value) {
                     case "mass1_mass2": 
+                        axis1 = "mass1";
+                        axis2 = "mass2";
                         console.log("Transforming to mass1 / mass2 space");
                         full_bank = m1m2(full_bank);
                         break;
                     case "mchirp_eta": 
+                        axis1 = "mchirp";
+                        axis2 = "eta";
                         console.log("Transforming to mchirp / eta space");
                         full_bank = mc_eta(full_bank);
                         break;
                 }
-                load_data(init_data, container, full_bank);
+                load_data(init_data, container, full_bank, axis1, axis2);
 
             });
             coord_select.selectAll("option").data(coord_systems)
@@ -393,10 +405,13 @@ d3.json("bank.json", function(error, full_bank) {
                     return d;
                 });
 
-            sidebar.append("div").attr("class", "info").html("<br/>Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
+            sidebar.append("div")
+                .attr("class", "info")
+                .style("padding", "10px")
+                .html("mass1: " + init_data.mass1 + "<br>mass2: " + init_data.mass2 + "<br> index " + 0);
 
             // FIXME: We get the first one, arbitrarily.
-            load_data(init_data, container, full_bank);
+            load_data(init_data, container, full_bank, "mass1", "mass2");
         }
 
     });
