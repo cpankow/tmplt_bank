@@ -151,6 +151,8 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
             scatter_plot(data, main, x, y, c, sidebar, full_bank);
             sidebar.select(".info").html("mass1: " + d[0] + "<br>mass2: " + d[1] + "<br> index " + i);
         });
+        // Also change the index selector
+        idx_select.node().options[i].selected = true;
     });
 }
 
@@ -357,7 +359,8 @@ d3.json("bank.json", function(error, full_bank) {
                 return "<a href='#type_" + k + "'>Type " + k + "</a>";
             });
 
-        header.append("p").html("<br/>Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
+        header.append("p").html("<br/>The following plots show the overlap of a given template bank for a given selected template with each other template in the bank. The 'type' often indicates the waveform family used to do the overlap, and can be different.");
+        header.append("p").html("<br/><b>Instructions</b>: Click on any point to load overlap with template bank. Scroll to zoom, click and drag to pan. Hover on a point to get more information.");
 
         // Loop through the rounds and create a scatter plot section for each
         types = Object.keys(data["types"]);
