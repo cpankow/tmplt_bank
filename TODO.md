@@ -1,4 +1,3 @@
- * tau0tau3 space
  * overlap threshold
  * list of neighbors and mean MM
  
