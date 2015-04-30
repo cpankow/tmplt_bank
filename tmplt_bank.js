@@ -12,29 +12,87 @@ IDX_MAP = {
     "mass2": 1,
     "spin1z": 2,
     "spin2z": 3,
+    // FIXME: These do an in-place replament, so the user has to switch back to
+    // physical masses before doing a different system
     "mchirp": 0,
-    "eta": 1
-    // TODO: Implement these
-    //"tau0": 0,
-    //"tau1": 1
+    "eta": 1,
+    "tau0": 0,
+    "tau3": 1
 };
 
+COORD_SYS = ["mass1_mass2", "mchirp_eta", "tau0_tau3", "spin1z_spin2z", "mass1_spin1z", "mass2_spin2z"];
+COORD_SYS_IDX = 0;
+
+/*
+ * Utility and metric conversion functions
+ * FIXME: Get the index *once*
+ */
+
+/*
+ * Convert component physical masses to chirp mass and symmetric mass ratio
+ */
 function mc_eta(data) {
     for (i = 0; i < data.length; i++) {
-        m1 = data[i][IDX_MAP["mass1"]];
-        m2 = data[i][IDX_MAP["mass2"]];
-        data[i][IDX_MAP["mass1"]] = Math.pow(m1*m2, 3./5.) * Math.pow(m1+m2, -1./5.);
-        data[i][IDX_MAP["mass2"]] = m1*m2/(m1+m2)/(m1+m2);
+        var m1 = data[i][IDX_MAP["mass1"]];
+        var m2 = data[i][IDX_MAP["mass2"]];
+        data[i][IDX_MAP["mchirp"]] = Math.pow(m1*m2, 3./5.) * Math.pow(m1+m2, -1./5.);
+        data[i][IDX_MAP["eta"]] = m1*m2/(m1+m2)/(m1+m2);
     }
     return data;
 }
 
+/*
+ * Convert physical compoent masses to "tau0 tau3" components. See 
+ * T. Cokelaer Phys. Rev. D 76, 102004
+ */
+__prefac_0 = 5. / 256 / Math.PI;
+__prefac_3 = 1. / 8 / Math.PI;
+function tau0_tau3(data, flow) {
+
+    // FIXME: Address the low frequency of the template
+    if (typeof(flow)==='undefined') flow = 40;
+
+    for (i = 0; i < data.length; i++) {
+        var m1 = data[i][IDX_MAP["mass1"]];
+        var m2 = data[i][IDX_MAP["mass2"]];
+        var mt = m1 + m2;
+        var eta = m1 * m2 / mt / mt;
+        mt *= Math.PI * flow;
+        data[i][IDX_MAP["tau0"]] = __prefac_0 / flow / eta * Math.pow(mt, (-5./3));
+        data[i][IDX_MAP["tau3"]] = __prefac_3 / flow / eta * Math.pow(mt, (-2./3));
+    }
+    return data;
+}
+
+/*
+ * Convert chirp mass and symmetric mass ratio to component physical masses
+ */
 function m1m2(data) {
     for (i = 0; i < data.length; i++) {
         mc = data[i][IDX_MAP["mchirp"]];
         eta = data[i][IDX_MAP["eta"]];
         data[i][IDX_MAP["mass1"]] = 0.5*mc*Math.pow(eta, -3./5.)*(1. + Math.sqrt(1 - 4.*eta));
         data[i][IDX_MAP["mass2"]] = 0.5*mc*Math.pow(eta, -3./5.)*(1. - Math.sqrt(1 - 4.*eta));
+    }
+    return data;
+}
+
+/*
+ * Convert "tau0 tau3" components to physical compoent masses. See 
+ * T. Cokelaer Phys. Rev. D 76, 102004
+ */
+__prefac_tau = 5. / 32 / Math.PI;
+function tau0_tau3_inv(data, flow) {
+    // FIXME: Address the low frequency of the template
+    if (typeof(flow)==='undefined') flow = 40;
+
+    for (i = 0; i < data.length; i++) {
+        var tau0 = data[i][IDX_MAP["tau0"]];
+        var tau3 = data[i][IDX_MAP["tau3"]];
+        data[i][IDX_MAP["mchirp"]] =  __prefac_tau / flow / Math.PI * tau3 / tau0;
+        data[i][IDX_MAP["eta"]] = 1.0 / 8 / flow / tau3 * Math.pow(__prefac_tau * tau0 / tau3, 2./3);
+        // FIXME: make this a one-step transform
+        data = m1m2(data);
     }
     return data;
 }
@@ -427,7 +485,6 @@ d3.json("bank.json", function(error, full_bank) {
                 });
 
             // Coordinate selector
-            coord_systems = ["mass1_mass2", "mchirp_eta", "spin1z_spin2z", "mass1_spin1z", "mass2_spin2z"];
             var coord_select = sidebar.append("select");
             coord_select.on("change", function() {
                 sys = this.options[this.selectedIndex];
@@ -446,34 +503,50 @@ d3.json("bank.json", function(error, full_bank) {
                         axis1 = "mass1";
                         axis2 = "mass2";
                         console.log("Transforming to mass1 / mass2 space");
-                        full_bank = m1m2(full_bank);
+                        if (COORD_SYS[COORD_SYS_IDX] == "mchirp_eta") {
+                            full_bank = m1m2(full_bank);
+                        } else if (COORD_SYS[COORD_SYS_IDX] == "tau0_tau3") {
+                            full_bank = tau0_tau3_inv(full_bank);
+                        }
+                        COORD_SYS_IDX = COORD_SYS.indexOf("mass1_mass2");
                         break;
                     case "mchirp_eta": 
                         axis1 = "mchirp";
                         axis2 = "eta";
                         console.log("Transforming to mchirp / eta space");
                         full_bank = mc_eta(full_bank);
+                        COORD_SYS_IDX = COORD_SYS.indexOf("mchirp_eta");
+                        break;
+                    case "tau0_tau3": 
+                        axis1 = "tau0";
+                        axis2 = "tau3";
+                        console.log("Transforming to tau0 / tau3 space");
+                        full_bank = tau0_tau3(full_bank);
+                        COORD_SYS_IDX = COORD_SYS.indexOf("tau0_tau3");
                         break;
                     case "spin1z_spin2z": 
                         axis1 = "spin1z";
                         axis2 = "spin2z";
                         console.log("Transforming to spin1z / spin2z space");
+                        COORD_SYS_IDX = COORD_SYS.indexOf("spin1z_spin2z");
                         break;
                     case "mass1_spin1z": 
                         axis1 = "mass1";
                         axis2 = "spin1z";
                         console.log("Transforming to mass1 / spin1z space");
+                        COORD_SYS_IDX = COORD_SYS.indexOf("mass1_spin1z");
                         break;
                     case "mass2_spin2z": 
                         axis1 = "mass2";
                         axis2 = "spin2z";
                         console.log("Transforming to mass2 / spin2z space");
+                        COORD_SYS_IDX = COORD_SYS.indexOf("mass2_spin2z");
                         break;
                 }
                 load_data(init_data, container, full_bank, axis1, axis2);
 
             });
-            coord_select.selectAll("option").data(coord_systems)
+            coord_select.selectAll("option").data(COORD_SYS)
                 .enter().append("option")
                 .text(function(d) {
                     return d;
