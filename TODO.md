@@ -1,5 +1,4 @@
  * overlap threshold
- * list of neighbors and mean MM
  
 ## BUGS
 
