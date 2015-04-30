@@ -139,6 +139,31 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
         data_map[data[i][tmplt_idx_pos]] = data[i][ovrlp_idx_pos];
     }
 
+    var mean_ovrlp = d3.mean(data, function(d) { return d[ovrlp_idx_pos]; });
+    var n_html = "Mean overlap: " + mean_ovrlp;
+
+    // List the nearest neighbors
+    data = data.sort(function(d1, d2) {
+        return d1[ovrlp_idx_pos] < d2[ovrlp_idx_pos] ? 1 : -1;
+    });
+    var n_neighbors = 11;
+    n_html += "<br><h3>Neighbors</h3>";
+    for (i = 1; i < n_neighbors; i++) {
+        d = data[i];
+        n_html += "<br>";
+        n_html += d[0] + " " + d[1] + " " + d[ovrlp_idx_pos];
+    }
+
+    // If it exists, get it
+    var nghbr = sidebar.select(".neighbors");
+    // else make it
+    if (nghbr.empty()) {
+        nghbr = sidebar.append("div")
+                .attr("class", "neighbors")
+                .style("padding-top", "10px");
+    }
+    nghbr.html(n_html);
+
     // FIXME: Split into calculated and uncalculated dots
     // This is so the 'uncalculated' dots don't overlay on top
 	dots = g.selectAll("scatter-dots")
