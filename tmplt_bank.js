@@ -133,8 +133,10 @@ function scatter_plot(data, main, x, y, c, sidebar, full_bank) {
 
     // Map the overlap data by index
     var data_map = {};
+    var tmplt_idx_pos = data[0].length-1;
+    var ovrlp_idx_pos = data[0].length-2;
     for (i = 0; i < data.length; i++) {
-        data_map[data[i][3]] = data[i][2];
+        data_map[data[i][tmplt_idx_pos]] = data[i][ovrlp_idx_pos];
     }
 
     // FIXME: Split into calculated and uncalculated dots
