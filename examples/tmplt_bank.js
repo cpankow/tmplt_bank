@@ -1,0 +1,1 @@
+../tmplt_bank.js
