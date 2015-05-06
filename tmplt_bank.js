@@ -50,7 +50,12 @@ function mc_eta(data) {
  * T. Cokelaer Phys. Rev. D 76, 102004
  */
 __prefac_0 = 5. / 256 / Math.PI;
-__prefac_3 = 1. / 8 / Math.PI;
+__prefac_3 = 1. / 8;
+/* 
+ * As calculated by lal.G_SI / lal.C_SI**3 * lal.MSUN_SI, with constants taken
+ * from the LIGO Algorithm Library
+ */
+__dim_mass = 4.925492321898863e-06;
 function tau0_tau3(data, flow) {
 
     // FIXME: Address the low frequency of the template
@@ -66,7 +71,7 @@ function tau0_tau3(data, flow) {
         var m2 = data[i][i2];
         var mt = m1 + m2;
         var eta = m1 * m2 / mt / mt;
-        mt *= Math.PI * flow;
+        mt *= Math.PI * flow * __dim_mass;
         data[i][j1] = __prefac_0 / flow / eta * Math.pow(mt, (-5./3));
         data[i][j2] = __prefac_3 / flow / eta * Math.pow(mt, (-2./3));
     }
@@ -82,8 +87,12 @@ function m1m2(data) {
     var j1 = IDX_MAP["mass1"];
     var j2 = IDX_MAP["mass2"];
     for (i = 0; i < data.length; i++) {
-        mc = data[i][i1];
-        eta = data[i][i2];
+        var mc = data[i][i1];
+        var eta = data[i][i2];
+        if (eta > 0.25) {
+            console.log("Warning, value of eta (" + eta + ") exceeding 0.25 detected. This could be round off in the conversion, but check the input space carefully. Automatically adjusting to 0.25");
+            eta = 0.25;
+        }
         data[i][j1] = 0.5*mc*Math.pow(eta, -3./5.)*(1. + Math.sqrt(1 - 4.*eta));
         data[i][j2] = 0.5*mc*Math.pow(eta, -3./5.)*(1. - Math.sqrt(1 - 4.*eta));
     }
@@ -109,10 +118,19 @@ function tau0_tau3_inv(data, flow) {
         var tau0 = data[i][i1];
         var tau3 = data[i][i2];
         data[i][j1] =  __prefac_tau / flow / Math.PI * tau3 / tau0;
-        data[i][j2] = 1.0 / 8 / flow / tau3 * Math.pow(__prefac_tau * tau0 / tau3, 2./3);
-        // FIXME: make this a one-step transform
-        data = m1m2(data);
+        data[i][j2] = 1.0 / 8 / flow / tau3 * Math.pow(tau0 / __prefac_tau / tau3, 2./3);
+        // M_t = M_c * eta ^ 3/5
+        data[i][j1] *= Math.pow(data[i][j2], 3./5);
     }
+
+    // FIXME: make this a one-step transform
+    data = m1m2(data);
+
+    for (i = 0; i < data.length; i++) {
+        data[i][j1] /= __dim_mass;
+        data[i][j2] /= __dim_mass;
+    }
+
     return data;
 }
 
